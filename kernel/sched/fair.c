@@ -3037,23 +3037,6 @@ static unsigned long cpu_avg_load_per_task(int cpu)
 	return 0;
 }
 
-static void record_wakee(struct task_struct *p)
-{
-	/*
-	 * Rough decay (wiping) for cost saving, don't worry
-	 * about the boundary, really active task won't care
-	 * about the loss.
-	 */
-	if (jiffies > current->wakee_flip_decay_ts + HZ) {
-		current->wakee_flips = 0;
-		current->wakee_flip_decay_ts = jiffies;
-	}
-
-	if (current->last_wakee != p) {
-		current->last_wakee = p;
-		current->wakee_flips++;
-	}
-}
 
 static void task_waking_fair(struct task_struct *p)
 {
@@ -3074,7 +3057,6 @@ static void task_waking_fair(struct task_struct *p)
 #endif
 
 	se->vruntime -= min_vruntime;
-	record_wakee(p);
 }
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -3193,28 +3175,6 @@ static inline unsigned long effective_load(struct task_group *tg, int cpu,
 
 #endif
 
-static int wake_wide(struct task_struct *p)
-{
-	int factor = this_cpu_read(sd_llc_size);
-
-	/*
-	 * Yeah, it's the switching-frequency, could means many wakee or
-	 * rapidly switch, use factor here will just help to automatically
-	 * adjust the loose-degree, so bigger node will lead to more pull.
-	 */
-	if (p->wakee_flips > factor) {
-		/*
-		 * wakee is somewhat hot, it needs certain amount of cpu
-		 * resource, so if waker is far more hot, prefer to leave
-		 * it alone.
-		 */
-		if (current->wakee_flips > (factor * p->wakee_flips))
-			return 1;
-	}
-
-	return 0;
-}
-
 static int wake_affine(struct sched_domain *sd, struct task_struct *p, int sync)
 {
 	s64 this_load, load;
@@ -3223,13 +3183,6 @@ static int wake_affine(struct sched_domain *sd, struct task_struct *p, int sync)
 	struct task_group *tg;
 	unsigned long weight;
 	int balanced;
-
-	/*
-	 * If we wake multiple tasks be careful to not bounce
-	 * ourselves around too much.
-	 */
-	if (wake_wide(p))
-		return 0;
 
 	idx	  = sd->wake_idx;
 	this_cpu  = smp_processor_id();
@@ -5137,7 +5090,7 @@ static int load_balance(int this_cpu, struct rq *this_rq,
 			int *balance)
 {
 	int ld_moved, cur_ld_moved, active_balance = 0;
-	struct sched_group *group = NULL;
+	struct sched_group *group;
 	struct rq *busiest = NULL;
 	unsigned long flags;
 	struct cpumask *cpus = __get_cpu_var(load_balance_mask);
@@ -5369,11 +5322,11 @@ out_one_pinned:
 
 	ld_moved = 0;
 out:
-	/*trace_sched_load_balance(this_cpu, idle, *balance,
+	trace_sched_load_balance(this_cpu, idle, *balance,
 				 group ? group->cpumask[0] : 0,
 				 busiest ? busiest->nr_running : 0,
 				 env.imbalance, env.flags, ld_moved,
-				 sd->balance_interval);*/
+				 sd->balance_interval);
 	return ld_moved;
 }
 

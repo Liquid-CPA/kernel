@@ -1497,7 +1497,7 @@ static int smb135x_set_usb_chg_current(struct smb135x_chg *chip,
 		goto out;
 	}
 	if (current_ma == CURRENT_500_MA) {
-		rc = smb135x_masked_write(chip, CFG_5_REG, USB_2_3_BIT, 0);
+		rc = smb135x_masked_write(chip, CFG_5_REG, USB_2_3_BIT, USB_2_3_BIT);
 		rc |= smb135x_masked_write(chip, CMD_INPUT_LIMIT,
 				USB_100_500_AC_MASK, USB_500_VAL);
 		rc |= smb135x_path_suspend(chip, USB, CURRENT, false);
@@ -2518,7 +2518,7 @@ static void wireless_insertion_work(struct work_struct *work)
 static int drop_usbin_rate(struct smb135x_chg *chip)
 {
 	int rc;
-	u8 reg = 0;
+	u8 reg;
 
 	rc = smb135x_read(chip, CFG_C_REG, &reg);
 	if (rc < 0)
@@ -2668,7 +2668,7 @@ static void toggle_usbin_aicl(struct smb135x_chg *chip)
 #define INPUT_CURR_CHECK_THRES 0x0C /*  1100 mA */
 static void heartbeat_work(struct work_struct *work)
 {
-	u8 reg = 0;
+	u8 reg;
 	int rc;
 	struct timespec bootup_time;
 	unsigned long float_timestamp;
@@ -4798,7 +4798,7 @@ static ssize_t force_chg_iusb_show(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
-	int state = 0;
+	int state;
 	int ret;
 	u8 value;
 

@@ -1523,6 +1523,7 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 	}
 
 	ret = 0;
+	pr_info("[imoseyon] dm-crypt cipher is %s\n", cipher_api);
 bad:
 	kfree(cipher_api);
 	return ret;
